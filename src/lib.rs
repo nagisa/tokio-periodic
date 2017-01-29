@@ -194,6 +194,12 @@ mod imp {
             }
         }
 
+        // On OS X MSECONDS is the default if nothing else is specified.
+        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        const NOTE_MSECONDS: u32 = 0;
+        #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+        const NOTE_MSECONDS: u32 = libc::NOTE_MSECONDS;
+
         // intptr_t for time lolz?
         fn duration_to_units(interval: Duration) -> Result<(u32, intptr_t)> {
             let secs = interval.as_secs();
@@ -205,7 +211,7 @@ mod imp {
             let (ty, subsec) = if nanos % 1_000_000_000 == 0 {
                 (libc::NOTE_SECONDS, 0)
             } else if nanos % 1_000_000 == 0 {
-                (libc::NOTE_MSECONDS, nanos / 1_000_0000)
+                (NOTE_MSECONDS, nanos / 1_000_0000)
             } else if nanos % 1_000 == 0 {
                 (libc::NOTE_USECONDS, nanos / 1_000)
             } else {
@@ -213,7 +219,7 @@ mod imp {
             };
             let combined = match ty {
                 libc::NOTE_SECONDS => Some(secs as intptr_t),
-                libc::NOTE_MSECONDS =>
+                NOTE_MSECONDS =>
                     (secs as intptr_t).checked_mul(1_000)
                                       .and_then(|v| v.checked_add(subsec as intptr_t)),
                 libc::NOTE_USECONDS =>
