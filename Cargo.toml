@@ -14,6 +14,3 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 winapi = "0.2"
 kernel32-sys = "0.2"
-
-[replace]
-"mio:0.6.4" = {path = "./mio"}
