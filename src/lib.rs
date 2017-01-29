@@ -66,6 +66,8 @@ mod imp {
     extern crate libc;
     use std::os::unix::io::RawFd;
     use std::os::raw::c_int;
+    use std::io::Result;
+    use std::time::Duration;
     use mio::{Poll, Token, Ready, PollOpt, Evented};
     use mio::unix::EventedFd;
 
@@ -75,7 +77,7 @@ mod imp {
     const TFD_NONBLOCK: c_int = libc::O_NONBLOCK;
 
     impl Timer {
-        pub fn new() -> ::Result<Timer> {
+        pub fn new() -> Result<Timer> {
             unsafe {
                 let ret = timerfd_create(libc::CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
                 if ret == -1 { return Err(::std::io::Error::last_os_error()); }
@@ -85,7 +87,7 @@ mod imp {
             }
         }
 
-        pub fn reset(&self, interval: ::Duration) -> ::Result<()> {
+        pub fn reset(&self, interval: Duration) -> Result<()> {
             // This seriously needs a nicer way to convert.
             let tspec = libc::timespec {
                 tv_sec: interval.as_secs() as _,
@@ -104,21 +106,21 @@ mod imp {
     }
 
     impl Evented for Timer {
-        fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> ::Result<()> {
+        fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
             EventedFd(&self.fd).register(poll, token, Ready::readable() | Ready::error(), opts)
         }
 
-        fn reregister(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> ::Result<()> {
+        fn reregister(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
             EventedFd(&self.fd).reregister(poll, token, Ready::readable() | Ready::error(), opts)
         }
 
-        fn deregister(&self, poll: &Poll) -> ::Result<()> {
+        fn deregister(&self, poll: &Poll) -> Result<()> {
             EventedFd(&self.fd).deregister(poll)
         }
     }
 
     impl ::std::io::Read for Timer {
-        fn read(&mut self, buf: &mut [u8]) -> ::Result<usize> {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
             let ret = unsafe { libc::read(self.fd, buf.as_mut_ptr() as *mut _, buf.len()) };
             if ret == -1 { return Err(::std::io::Error::last_os_error()); }
             debug_assert_eq!(ret, 8);
@@ -152,6 +154,8 @@ mod imp {
 mod imp {
     extern crate libc;
     use std::os::unix::io::RawFd;
+    use std::io::Result;
+    use std::time::Duration;
     use self::libc::{intptr_t, kevent, kqueue};
     use mio::{Poll, Token, Ready, PollOpt, Evented};
     use mio::unix::EventedFd;
@@ -160,7 +164,7 @@ mod imp {
 
 
     impl Timer {
-        pub fn new() -> ::Result<Timer> {
+        pub fn new() -> Result<Timer> {
             unsafe {
                 let ret = kqueue();
                 if ret == -1 { return Err(::std::io::Error::last_os_error()); }
@@ -170,7 +174,7 @@ mod imp {
             }
         }
 
-        pub fn reset(&self, interval: ::Duration) -> ::Result<()> {
+        pub fn reset(&self, interval: Duration) -> Result<()> {
             let (ty, dur) = try!(Timer::duration_to_units(interval));
             let en_flag = if dur == 0 { libc::EV_DISABLE } else { libc::EV_ENABLE };
             let kevt = kevent {
@@ -191,7 +195,7 @@ mod imp {
         }
 
         // intptr_t for time lolz?
-        fn duration_to_units(interval: ::Duration) -> ::Result<(u32, intptr_t)> {
+        fn duration_to_units(interval: Duration) -> Result<(u32, intptr_t)> {
             let secs = interval.as_secs();
             let nanos = interval.subsec_nanos() as u64;
             let max = intptr_t::max_value() as u64;
@@ -230,21 +234,21 @@ mod imp {
     }
 
     impl Evented for Timer {
-        fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> ::Result<()> {
+        fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
             EventedFd(&self.fd).register(poll, token, Ready::readable() | Ready::error(), opts)
         }
 
-        fn reregister(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> ::Result<()> {
+        fn reregister(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
             EventedFd(&self.fd).reregister(poll, token, Ready::readable() | Ready::error(), opts)
         }
 
-        fn deregister(&self, poll: &Poll) -> ::Result<()> {
+        fn deregister(&self, poll: &Poll) -> Result<()> {
             EventedFd(&self.fd).deregister(poll)
         }
     }
 
     impl ::std::io::Read for Timer {
-        fn read(&mut self, buf: &mut [u8]) -> ::Result<usize> {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
             unsafe {
                 // Need at least 8 bytes of buffer
                 if buf.len() < 8 { return Err(::std::io::Error::from_raw_os_error(libc::EINVAL)); }
@@ -281,6 +285,8 @@ mod imp {
     extern crate kernel32;
     use std::sync::atomic;
     use std::ptr;
+    use std::io::Result;
+    use std::time::Duration;
     use mio::{Poll, Token, Ready, PollOpt, Evented, Registration, SetReadiness};
 
     pub struct Timer {
@@ -295,7 +301,7 @@ mod imp {
     }
 
     impl Timer {
-        pub fn new() -> ::Result<Timer> {
+        pub fn new() -> Result<Timer> {
             Ok(Timer {
                 inner: Box::into_raw(Box::new(Inner {
                     active: atomic::AtomicPtr::new(ptr::null_mut()),
@@ -305,7 +311,7 @@ mod imp {
             })
         }
 
-        pub fn reset(&self, interval: ::Duration) -> ::Result<()> {
+        pub fn reset(&self, interval: Duration) -> Result<()> {
             unsafe extern "system" fn callback(data: winapi::PVOID,
                                                _: winapi::BOOLEAN) {
                 let this: &Inner = &*(data as *mut _);
@@ -345,7 +351,7 @@ mod imp {
             }
         }
 
-        pub fn interval_to_millis(interval: ::Duration) -> ::Result<winapi::DWORD> {
+        pub fn interval_to_millis(interval: Duration) -> Result<winapi::DWORD> {
             let max = winapi::DWORD::max_value();
             // Round up
             let subsec_ns = interval.subsec_nanos() as u64 + 999_999;
@@ -361,7 +367,7 @@ mod imp {
     }
 
     impl Evented for Timer {
-        fn register(&self, poll: &Poll, token: Token, rdy: Ready, opts: PollOpt) -> ::Result<()> {
+        fn register(&self, poll: &Poll, token: Token, rdy: Ready, opts: PollOpt) -> Result<()> {
             unsafe {
                 let val = Some(Registration::new(poll, token, rdy, opts));
                 *(*self.inner).registration.lock().unwrap() = val;
@@ -369,14 +375,14 @@ mod imp {
             }
         }
 
-        fn reregister(&self, poll: &Poll, token: Token, rdy: Ready, opts: PollOpt) -> ::Result<()> {
+        fn reregister(&self, poll: &Poll, token: Token, rdy: Ready, opts: PollOpt) -> Result<()> {
             unsafe {
                 (*self.inner).registration.lock().unwrap().as_mut().unwrap().0
                 .update(poll, token, rdy, opts)
             }
         }
 
-        fn deregister(&self, poll: &Poll) -> ::Result<()> {
+        fn deregister(&self, poll: &Poll) -> Result<()> {
             unsafe {
                 (*self.inner).registration.lock().unwrap().take().unwrap().0.deregister(poll)
             }
@@ -384,7 +390,7 @@ mod imp {
     }
 
     impl ::std::io::Read for Timer {
-        fn read(&mut self, buf: &mut [u8]) -> ::Result<usize> {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
             unsafe {
                 if buf.len() < 8 { return Err(
                     ::std::io::Error::from_raw_os_error(winapi::ERROR_INSUFFICIENT_BUFFER as i32)
@@ -420,6 +426,7 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use std::time;
+    use tokio_core::reactor;
     use futures::stream::Stream;
     use futures::future::{self, Future};
 
@@ -439,7 +446,7 @@ mod tests {
 
     #[test]
     fn works() {
-        let mut core = super::reactor::Core::new().unwrap();
+        let mut core = reactor::Core::new().unwrap();
         let handle = core.handle();
         let mut timer = super::PeriodicTimer::new(&handle)
             .expect("periodic timer can be created");
@@ -466,7 +473,7 @@ mod tests {
 
     #[test]
     fn reset_works() {
-        let mut core = super::reactor::Core::new().unwrap();
+        let mut core = reactor::Core::new().unwrap();
         let handle = core.handle();
         let mut timer = super::PeriodicTimer::new(&handle)
             .expect("periodic timer can be created");
@@ -499,14 +506,14 @@ mod tests {
 
     #[test]
     fn drop_unset_works() {
-        let core = super::reactor::Core::new().unwrap();
+        let core = reactor::Core::new().unwrap();
         let handle = core.handle();
         super::PeriodicTimer::new(&handle).expect("periodic timer can be created");
     }
 
     #[test]
     fn reset_zero_works() {
-        let mut core = super::reactor::Core::new().unwrap();
+        let mut core = reactor::Core::new().unwrap();
         let handle = core.handle();
         let timer = super::PeriodicTimer::new(&handle).expect("periodic timer can be created");
         timer.reset(time::Duration::new(0, 1_000_000)).expect("reset works");
