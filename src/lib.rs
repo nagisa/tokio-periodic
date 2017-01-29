@@ -162,7 +162,6 @@ mod imp {
 
     pub struct Timer { fd: RawFd }
 
-
     impl Timer {
         pub fn new() -> Result<Timer> {
             unsafe {
@@ -193,12 +192,6 @@ mod imp {
                 Ok(())
             }
         }
-
-        // On OS X MSECONDS is the default if nothing else is specified.
-        #[cfg(any(target_os = "ios", target_os = "macos"))]
-        const NOTE_MSECONDS: u32 = 0;
-        #[cfg(not(any(target_os = "ios", target_os = "macos")))]
-        const NOTE_MSECONDS: u32 = libc::NOTE_MSECONDS;
 
         // intptr_t for time lolz?
         fn duration_to_units(interval: Duration) -> Result<(u32, intptr_t)> {
@@ -236,8 +229,13 @@ mod imp {
                 return Err(::std::io::Error::from_raw_os_error(libc::EINVAL));
             }))
         }
-
     }
+
+    // On OS X MSECONDS is the default if nothing else is specified.
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    const NOTE_MSECONDS: u32 = 0;
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    const NOTE_MSECONDS: u32 = libc::NOTE_MSECONDS;
 
     impl Evented for Timer {
         fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
