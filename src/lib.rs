@@ -1,4 +1,4 @@
-//! Asynchronous, periodic, near-0-cost cross-platform timers
+//! Asynchronous, periodic, mostly-0-cost cross-platform timers
 
 #[macro_use]
 extern crate tokio_core;
@@ -493,8 +493,6 @@ mod tests {
             } else {
                 duration - interval
             };
-            // Windows has horrendous scheduling wherein a thread could take 16ms to wake up or
-            // something. Give it 20ms of time.
             assert!(absdiff < allowed_delta(), "absdiff is {:?}", absdiff);
         }
     }
