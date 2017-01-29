@@ -21,7 +21,7 @@ impl PeriodicTimer {
     /// Create a new `PeriodicTimer` associated with specified event loop handle
     pub fn new(handle: &reactor::Handle) -> Result<PeriodicTimer> {
         Ok(PeriodicTimer {
-            poll: reactor::PollEvented::new(imp::Timer::new()?, handle)?
+            poll: try!(reactor::PollEvented::new(try!(imp::Timer::new()), handle))
         })
     }
 
@@ -171,7 +171,7 @@ mod imp {
         }
 
         pub fn reset(&self, interval: ::Duration) -> ::Result<()> {
-            let (ty, dur) = Timer::duration_to_units(interval)?;
+            let (ty, dur) = try!(Timer::duration_to_units(interval));
             let en_flag = if dur == 0 { libc::EV_DISABLE } else { libc::EV_ENABLE };
             let kevt = kevent {
                 ident: 0,
@@ -327,7 +327,7 @@ mod imp {
                     if ret == 0 { return Err(::std::io::Error::last_os_error()); }
                 }
                 (*self.inner).times_fired.store(0, atomic::Ordering::SeqCst);
-                let time_in_ms = Timer::interval_to_millis(interval)?;
+                let time_in_ms = try!(Timer::interval_to_millis(interval));
                 if time_in_ms == 0 { return Ok(()); }
                 let ret = kernel32::CreateTimerQueueTimer(&mut out, ptr::null_mut(),
                                                           Some(callback),
