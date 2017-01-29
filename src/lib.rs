@@ -167,8 +167,9 @@ mod imp {
             unsafe {
                 let ret = kqueue();
                 if ret == -1 { return Err(::std::io::Error::last_os_error()); }
-                let ret2 = libc::ioctl(ret, libc::FIOCLEX);
-                if ret2 == -1 { return Err(::std::io::Error::last_os_error()); }
+                if libc::ioctl(ret, libc::FIOCLEX) == -1 {
+                    libc::fcntl(ret, libc::F_SETFD, libc::FD_CLOEXEC);
+                }
                 Ok(Timer { fd: ret })
             }
         }
