@@ -1,5 +1,3 @@
-//! Asynchronous, periodic, mostly-0-cost cross-platform timers
-
 #[macro_use]
 extern crate tokio_core;
 extern crate mio;
@@ -9,10 +7,36 @@ use std::time::Duration;
 use tokio_core::reactor;
 use std::io::{Result, Read};
 
-/// Asynchronous, periodic timer
+/// Asynchronous, cross-platform periodic timer
 ///
 /// This timer, when `reset` for the first time will become ready to `poll` every specified
-/// interval until it is destroyed.
+/// interval until it is dropped or `reset` again.
+///
+/// # Example
+///
+/// `PeriodicTimer` implements `futures::stream::Stream` and therefore interoperates with other
+/// futures well. In this example `PeriodicTimer` is used to print integers every second:
+///
+/// ```rust
+/// extern crate futures;
+/// extern crate tokio_core;
+/// extern crate tokio_periodic;
+///
+/// let mut core = tokio_core::reactor::Core::new().unwrap();
+/// let handle = core.handle();
+/// let timer = tokio_periodic::PeriodicTimer::new(&handle).unwrap();
+/// timer.reset(::std::time::Duration::new(1, 0));
+/// let digits = futures::stream::unfold(1, |v| if v < 3 { // for demonstration purposes stop at 3
+///     Some(futures::future::ok((v, v + 1)))
+/// } else {
+///     None
+/// });
+/// let mut timer_stream = futures::Stream::zip(timer, digits);
+/// while let Ok((Some(item), stream)) = core.run(futures::Stream::into_future(timer_stream)) {
+///     println!("{:?}", item);
+///     timer_stream = stream;
+/// }
+/// ```
 pub struct PeriodicTimer {
     poll: reactor::PollEvented<imp::Timer>
 }
