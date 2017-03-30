@@ -223,36 +223,46 @@ mod imp {
             let secs = interval.as_secs();
             let nanos = interval.subsec_nanos() as u64;
             let max = intptr_t::max_value() as u64;
+
             if nanos > max || secs > max {
                 return Err(::std::io::Error::from_raw_os_error(libc::EINVAL));
             }
-            let (ty, subsec) = if nanos % 1_000_000_000 == 0 {
-                (libc::NOTE_SECONDS, 0)
-            } else if nanos % 1_000_000 == 0 {
-                (NOTE_MSECONDS, nanos / 1_000_0000)
-            } else if nanos % 1_000 == 0 {
-                (libc::NOTE_USECONDS, nanos / 1_000)
-            } else {
-                (libc::NOTE_NSECONDS, nanos)
-            };
-            let combined = match ty {
-                libc::NOTE_SECONDS => Some(secs as intptr_t),
-                NOTE_MSECONDS =>
-                    (secs as intptr_t).checked_mul(1_000)
-                                      .and_then(|v| v.checked_add(subsec as intptr_t)),
-                libc::NOTE_USECONDS =>
-                    (secs as intptr_t).checked_mul(1_000_000)
-                                      .and_then(|v| v.checked_add(subsec as intptr_t)),
-                libc::NOTE_NSECONDS =>
-                    (secs as intptr_t).checked_mul(1_000_000_000)
-                                      .and_then(|v| v.checked_add(subsec as intptr_t)),
-                _ => panic!("impossible case reached")
-            };
-            Ok((ty, if let Some(ret) = combined {
-                ret
-            } else {
+
+            let secs = secs as intptr_t;
+            let nanos = nanos as intptr_t;
+
+            if let Some(val) = secs.checked_mul(1_000_000_000)
+                                   .and_then(|v| v.checked_add(nanos)) {
+                return Ok((libc::NOTE_NSECONDS, val));
+            }
+
+            if nanos % 1_000 != 0 {
                 return Err(::std::io::Error::from_raw_os_error(libc::EINVAL));
-            }))
+            }
+
+            let micros = nanos / 1_000;
+
+            if let Some(val) = secs.checked_mul(1_000_000)
+                                   .and_then(|v| v.checked_add(micros)) {
+                return Ok((libc::NOTE_USECONDS, val));
+            }
+
+            if micros % 1_000 != 0 {
+                return Err(::std::io::Error::from_raw_os_error(libc::EINVAL));
+            }
+
+            let millis = micros / 1_000;
+
+            if let Some(val) = secs.checked_mul(1_000)
+                                   .and_then(|v| v.checked_add(millis)) {
+                return Ok((NOTE_MSECONDS, val));
+            }
+
+            if millis % 1_000 != 0 {
+                return Err(::std::io::Error::from_raw_os_error(libc::EINVAL));
+            }
+
+            Ok((libc::NOTE_SECONDS, secs))
         }
     }
 
