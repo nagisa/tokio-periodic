@@ -508,7 +508,7 @@ mod tests {
             .expect("periodic timer can be created");
         timer.reset(time::Duration::new(0, 5_000_000))
             .expect("reset works");
-        // run one iteration, so in case reset worked incrrectly and set up two timers,
+        // run one iteration, so in case reset worked incorrectly and set up two timers,
         // timer would then fire in a pattern of `a-b-[32ms of a]-b-[32ms of a]-b-...` and test
         // would fail
         timer = core.run(timer.into_future()).map_err(|(a, _)| a).unwrap().1;
