@@ -476,11 +476,18 @@ mod tests {
         time::Duration::new(0, 20_000_000)
     }
 
-    #[cfg(not(windows))]
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
     fn allowed_delta() -> time::Duration {
-        // Every other OS is swifter and can handle 5ms and probably even smaller deltas
+        // macOS seems to better at schedulling than windows, but still sucks terribly. Lets give
+        // them 10ms of leeway.
+        time::Duration::new(0, 10_000_000)
+    }
+
+    #[cfg(not(any(windows, target_os = "ios", target_os = "macos")))]
+    fn allowed_delta() -> time::Duration {
+        // Every other OS is swifter and can handle 1ms and probably even smaller deltas
         // comfortably.
-        time::Duration::new(0, 5_000_000)
+        time::Duration::new(0, 1_000_000)
     }
 
     #[test]
