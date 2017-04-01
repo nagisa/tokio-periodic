@@ -1,6 +1,6 @@
 [package]
 name = "tokio-periodic"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Simonas Kazlauskas <git@kazlauskas.me>"]
 description = "Cross-platform, mostly-0-cost asynchronous periodic timers"
 license = "ISC"
