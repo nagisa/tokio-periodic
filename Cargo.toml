@@ -10,7 +10,7 @@ documentation = "https://docs.rs/tokio-periodic/"
 [dependencies]
 futures = "0.1"
 tokio-core="0.1"
-mio = "0.6"
+mio = "^0.6.5"
 
 [target.'cfg(not(windows))'.dependencies]
 libc = "0.2"

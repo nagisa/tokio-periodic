@@ -93,7 +93,7 @@ mod imp {
     use std::io::Result;
     use std::time::Duration;
     use mio::{Poll, Token, Ready, PollOpt, Evented};
-    use mio::unix::EventedFd;
+    use mio::unix::{EventedFd, UnixReady};
 
     pub struct Timer { fd: RawFd }
 
@@ -131,11 +131,11 @@ mod imp {
 
     impl Evented for Timer {
         fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
-            EventedFd(&self.fd).register(poll, token, Ready::readable() | Ready::error(), opts)
+            EventedFd(&self.fd).register(poll, token, Ready::readable() | UnixReady::error(), opts)
         }
 
         fn reregister(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
-            EventedFd(&self.fd).reregister(poll, token, Ready::readable() | Ready::error(), opts)
+            EventedFd(&self.fd).reregister(poll, token, Ready::readable() | UnixReady::error(), opts)
         }
 
         fn deregister(&self, poll: &Poll) -> Result<()> {
@@ -182,7 +182,7 @@ mod imp {
     use std::time::Duration;
     use self::libc::{intptr_t, kevent, kqueue};
     use mio::{Poll, Token, Ready, PollOpt, Evented};
-    use mio::unix::EventedFd;
+    use mio::unix::{EventedFd, UnixReady};
 
     pub struct Timer { fd: RawFd }
 
@@ -274,11 +274,11 @@ mod imp {
 
     impl Evented for Timer {
         fn register(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
-            EventedFd(&self.fd).register(poll, token, Ready::readable() | Ready::error(), opts)
+            EventedFd(&self.fd).register(poll, token, Ready::readable() | UnixReady::error(), opts)
         }
 
         fn reregister(&self, poll: &Poll, token: Token, _: Ready, opts: PollOpt) -> Result<()> {
-            EventedFd(&self.fd).reregister(poll, token, Ready::readable() | Ready::error(), opts)
+            EventedFd(&self.fd).reregister(poll, token, Ready::readable() | UnixReady::error(), opts)
         }
 
         fn deregister(&self, poll: &Poll) -> Result<()> {

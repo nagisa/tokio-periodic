@@ -6,7 +6,7 @@ fn main() {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let handle = core.handle();
     let timer = tokio_periodic::PeriodicTimer::new(&handle).unwrap();
-    timer.reset(::std::time::Duration::new(1, 0));
+    timer.reset(::std::time::Duration::new(1, 0)).unwrap();
     let digits = futures::stream::unfold(1, |v| {
         Some(futures::future::ok((v, v + 1)))
     });
